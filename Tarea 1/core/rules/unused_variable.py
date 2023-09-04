@@ -48,24 +48,6 @@ class UnusedVariableVisitor(WarningNodeVisitor):
         for key, values in self.dict.items():
             if not values[1]:
                 self.addWarning('UnusedVariable', values[0], 'variable ' + key + ' has not been used')
-                            
-
-
-    # def visit_Name(self, node: Name):
-    #     NodeVisitor.generic_visit(self, node)
-    #     match node:
-    #         case Name(id=nombre, ctx=Store()):
-    #             if nombre != "self":
-    #                 self.dict[nombre] = [node.lineno, False]
-    #         case Name(id=nombre, ctx=Load()):
-    #             if nombre != "self":
-    #                 self.dict[nombre][1] = True
-    
-    #def impresor(self):
-        #pass
-        # for key, values in self.dict.items():
-        #     if not values[1]:
-        #         self.addWarning('UnusedVariable', values[0], 'variable ' + key + ' has not been used')
 
 
 class UnusedVariableTestRule(Rule):
