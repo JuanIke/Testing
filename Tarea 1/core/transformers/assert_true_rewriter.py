@@ -6,13 +6,16 @@ from core.rewriter import RewriterCommand
 class AssertTrueTransformer(NodeTransformer):
     def visit_Call(self, node):
         NodeTransformer.generic_visit(self, node)
+        # Captamos el nodo
         if node.func.attr == 'assertEquals':
             return Call(
             func=Attribute(
                value=Name(id='self', ctx=Load()),
                attr='assertTrue',
                ctx=Load()),
+            # Pasamos los argumentos correctos
             args=[node.args[0]],
+            # Keywords correctos
             keywords=[])
         else:
             return node
