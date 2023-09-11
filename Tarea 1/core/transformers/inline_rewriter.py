@@ -1,5 +1,5 @@
-from _ast import FunctionDef
 from ast import *
+import ast
 from typing import Any
 from core.rewriter import RewriterCommand
 
@@ -7,11 +7,13 @@ class InLineTransformer(NodeTransformer):
 
     def __init__(self):
         super().__init__()
-        self.variables = {}
-        self.used = {}
-        self.returns = []
+        self.variables = {} # {variable: [Node, uses]}
+        self.expr = {} # {variable: Expr}
+        self.used = set() # [variable]
+        self.returns = [] # [Node]
 
     def visit_FunctionDef(self, node):
+        print("\n")
         NodeTransformer.generic_visit(self, node)
         for cuerpo in node.body:
 
@@ -45,20 +47,18 @@ class InLineTransformer(NodeTransformer):
                                 left=Name(id=variableExpr, ctx=Load()),
                                 op=_,
                                 right=Constant(value=_))):
+                        # Recuperamos el nodo
+                        newNode = cuerpo
                         # Recorremos las variables creadas para buscar la que está dentro de BinOp
-                        for keyVariables, valuesVariable in self.variables.items():
+                        for keyVariables in self.variables.keys():
                             # Si la encontramos
                             if keyVariables == variableExpr:
-                                # Lado izquierdo del BinOp será el value de la variable ya creada
-                                newNode = cuerpo
-                                newNode.value.left = valuesVariable[0].value
+                                # Subimos en 1 los usos de la variable
+                                self.variables[variableExpr][1] += 1
                         # Guardamos variable creada y nodo asignación
                         self.variables[variableName] = [newNode, 0]
-                        # Si la variable no ha sido usada
-                        # Subimos en 1 los usos de la variable
-                        self.variables[variableExpr][1] += 1
-                        # Guardamos el nodo Assign modificado en used
-                        self.used[variableExpr] = newNode
+                        # Guardamos la variable usada
+                        self.used.add(variableExpr)
                     
                     # Asignación de BinOp - Variable usada en right
                     case Assign(
@@ -68,46 +68,42 @@ class InLineTransformer(NodeTransformer):
                                 left=Constant(value=_)),
                                 op=_,
                                 right=Name(id=variableExpr, ctx=Load())):
+                        # Recuperamos el nodo
+                        newNode = cuerpo
                         # Recorremos las variables creadas para buscar la que está dentro de BinOp
-                        for keyVariables, valuesVariable in self.variables.items():
+                        for keyVariables in self.variables.keys():
                             # Si la encontramos
                             if keyVariables == variableExpr:
-                                # Lado derecho del BinOp será el value de la variable ya creada
-                                newNode = cuerpo
-                                newNode.value.right = valuesVariable[0].value
+                                # Subimos en 1 los usos de la variable
+                                self.variables[variableExpr][1] += 1
                         # Guardamos variable creada y nodo asignación
                         self.variables[variableName] = [newNode, 0]
-                        # Si la variable no ha sido usada
-                        # Subimos en 1 los usos de la variable
-                        self.variables[variableExpr][1] += 1
-                        # Guardamos el nodo Assign modificado en used
-                        self.used[variableExpr] = newNode
-                    
+                        # Guardamos la variable usada
+                        self.used.add(variableExpr)
+
                     # Asignación de BinOp - Variables en right y left
                     case Assign(
                             targets=[
                                 Name(id=variableName, ctx=Store())],
                             value=BinOp(
-                                left=Name(id=variableExpr1, ctx=Load())),
+                                left=Name(id=variableExpr1, ctx=Load()),
                                 op=_,
-                                right=Name(id=variableExpr2, ctx=Load())):
+                                right=Name(id=variableExpr2, ctx=Load()))):
+                        # Si la encontramos
+                        newNode = cuerpo
                         # Recorremos las variables creadas para buscar la que está dentro de BinOp
-                        for keyVariables, valuesVariable in self.variables.items():
-                            # Si la encontramos
-                            newNode1 = cuerpo
+                        for keyVariables in self.variables.keys():
                             if keyVariables == variableExpr1:
-                                newNode1.value.left = valuesVariable[0].value
+                                # Subimos en 1 los usos de la variable
+                                self.variables[variableExpr1][1] += 1
                             elif keyVariables == variableExpr2:
-                                newNode1.value.right = valuesVariable[0].value
+                                # Subimos en 1 los usos de la variable
+                                self.variables[variableExpr2][1] += 1
                         # Guardamos variable creada y nodo asignación
-                        self.variables[variableName] = [newNode1, 0]
-                        # Si la variable no ha sido usada
-                        # Subimos en 1 los usos de la variable 1
-                        self.variables[variableExpr1][1] += 1
-                        # Subimos en 1 los usos de la variable 2
-                        self.variables[variableExpr2][1] += 1
-                        # Guardamos el nodo Assign modificado en used
-                        self.used[variableExpr1] = newNode1
+                        self.variables[variableName] = [newNode, 0]
+                        # Guardamos las variables usadas
+                        self.used.add(variableExpr1)
+                        self.used.add(variableExpr2)
 
             # Revisamos las expresiones
             elif isinstance(cuerpo, Expr):
@@ -116,41 +112,90 @@ class InLineTransformer(NodeTransformer):
                     match arg:
                         # Un argumento es una variable
                         case Name(id=variableExpr, ctx=Load()):
-                            # Guardamos la variable usada y su nodo
-                            self.used[variableExpr] = cuerpo
-                            # Aumentamos en 1 los usos de a variable
+                            # Guardamos la variable usada
+                            self.used.add(variableExpr)
+                            # Aumentamos en 1 los usos de la variable
                             self.variables[variableExpr][1] += 1
+                            # Guardamos el nodo
+                            self.expr[variableExpr] = cuerpo
 
-        # Recorremos el diccionario
-        for keyVariables, valuesVariable in self.variables.items():
-            for keyUsed, valuesUsed in self.used.items():
-                # Si la variable está siendo usada
-                if keyVariables == keyUsed:
-                    if isinstance(valuesUsed, Expr):
-                        # Si el primer argumento es una variable o función
-                        if isinstance(valuesUsed.value.args[0], Name):
-                            # Guardamos el nodo usado
-                            newNode = valuesUsed
-                            # Cambiamos el argumento
-                            newNode.value.args[0] = valuesVariable[0].value
-                            # Agregamos el nodo nuevo a returns
-                            self.returns.append(newNode)
-                    if isinstance(valuesUsed, Assign):
-                        pass
-                        if valuesUsed.targets[0].id in self.used.keys():
-                            pass
-                        # Si se asignó a algo que no está siendo usado, entonces
-                        else:
-                            pass
-                        
-        print("Variables:", self.variables)
-        print("Used:", self.used)
+
+        # Ordenamos las variables usadas (No extensible)
+        sortedUsedVars = sorted(list(self.used))
+        # Recorremos las variables usadas
+        for variableUsed in sortedUsedVars:
+            for variableKey, variableValues in self.variables.items():
+
+                # Buscamos que la variable tenga justo 1 uso
+                if variableUsed == variableKey and variableValues[1] == 1:
+                    if isinstance(variableValues[0], Assign):
+                        match variableValues[0]:
+
+                            # BinOp con var en left
+                            case Assign(
+                                    targets=[
+                                        Name(id=varName, ctx=Store())],
+                                    value=BinOp(
+                                        left=Name(id=varExpr, ctx=Load()),
+                                        op=_,
+                                        right=Constant(value=_))):
+                                for varKey, varVal in self.variables.items():
+                                    if varKey == varExpr and varVal[1] == 1:
+                                        variableValues[0].value.left = varVal[0].value
+                                        break
+                            
+                            # BinOp con var en right
+                            case Assign(
+                                    targets=[
+                                        Name(id=varName, ctx=Store())],
+                                    value=BinOp(
+                                        left=Constant(value=_),
+                                        op=_,
+                                        right=Name(id=varExpr, ctx=Load()))):
+                                for varKey, varVal in self.variables.items():
+                                    if varKey == varExpr and varVal[1] == 1:
+                                        variableValues[0].value.right = varVal[0].value
+                                        break
+                            
+                            #BinOp con dos var
+                            case Assign(
+                                    targets=[
+                                        Name(id=varName, ctx=Store())],
+                                    value=BinOp(
+                                        left=Name(id=varLeft, ctx=Load()),
+                                        op=_,
+                                        right=Name(id=varRight, ctx=Load()))):
+                                for varKey, varVal in self.variables.items():
+                                    if varKey == varLeft and varVal[1] == 1:
+                                        variableValues[0].value.left = varVal[0].value
+                                        break
+                                for varKey, varVal in self.variables.items():
+                                    if varKey == varRight and varVal[1] == 1:
+                                        variableValues[0].value.right = varVal[0].value
+                                        break
+                                
+
+                # Buscamos que la variable tenga más de un uso
+                if variableUsed == variableKey and variableValues[1] > 1:
+                    if isinstance(variableValues[0], Assign):
+                        # Agregamos el nodo a los devueltos
+                        self.returns.append(variableValues[0])
+
+        for variableUsed, exprNode in self.expr.items():
+            for variableKey, variableValues in self.variables.items():
+                if exprNode.value.args[0].id == variableKey and variableValues[1] == 1:
+                    retNode = exprNode
+                    retNode.value.args[0] = variableValues[0].value
+                    print(ast.dump(parse(retNode)))
+                    self.returns.append(retNode)
+
+
         node.body = [self.returns]
         return node
                 
 
-class InlineCommand(RewriterCommand):
+class InlineCommand(RewriterCommand):   
     # Implementar comando, recuerde que puede necesitar implementar además clases NodeTransformer y/o NodeVisitor.
     def apply(self, tree):
         new_tree = fix_missing_locations(InLineTransformer().visit(tree))
-        return new_tree
+        return new_tree 
