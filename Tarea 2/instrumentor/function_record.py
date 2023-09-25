@@ -5,7 +5,7 @@ class FunctionRecord:
         self.avg = 0
         self.min = 0
         self.max = 0
-        self.functionCache = 0
+        self.funCache = 1
         
         self.recent_caller = None
         self.caller = []
@@ -28,4 +28,4 @@ class FunctionRecord:
         self.calculo_min_max_avg()
         self.caller_no_repete = list(set(self.caller))
         print("{:<30} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10}".format(self.functionName, self.freq,
-                                                                         self.avg, self.min, self.max, self.functionCache, str(self.caller_no_repete)))
+                                                                         self.avg, self.min, self.max, self.funCache, str(self.caller_no_repete)))
