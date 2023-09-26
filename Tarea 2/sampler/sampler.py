@@ -32,16 +32,7 @@ class Sampler:
                 stack.reverse()
                 print(stack)  # Esta linea imprime el stack despues de invertirlo la pueden comentar o descomentar si quieren
                 
-                for pos in range(len(stack)):
-                    self.usado = False
-                    for fun in self.final_tree: 
-                        if stack[pos] == fun[0] and fun[2]:
-                            self.usado = True
-                            fun[1] += 1
-                            break
-                    if self.usado == False:
-                        self.final_tree.append([stack[pos], 1, True, pos])
-
+                # desactivar antes de pasar nuevos nodos
                 contador_pos_stack = 0
                 contador_pos_tree = 0
                 for item in self.final_tree:
@@ -49,12 +40,25 @@ class Sampler:
                         break
                     if item[2] and item[0] == stack[contador_pos_stack]:
                         contador_pos_stack += 1
-                    else:
+                    elif item[2] and item[0] != stack[contador_pos_stack]:
                         break
                     contador_pos_tree += 1
 
                 for item_num in range(contador_pos_tree, len(self.final_tree)):
                     self.final_tree[item_num][2] = False
+
+                # agregar los nuevos nodos
+                for pos in range(len(stack)):
+                    self.usado = False
+                    for fun in self.final_tree: 
+                        if stack[pos] == fun[0] and fun[2] and pos == fun[3]:
+                            self.usado = True
+                            fun[1] += 1
+                            break
+                    if self.usado == False:
+                        self.final_tree.append([stack[pos], 1, True, pos])
+
+                # Desactivar funciones ACA hay que modificar (ver si hacer un mas 1 al pos_tree para dar espacio)
                     
     
     def sample(self):
@@ -63,4 +67,5 @@ class Sampler:
             sleep(1)
 
     def printReport(self):
-        print("\nFinal: ",self.final_tree, "\n")
+        for i in self.final_tree:
+            print(i)
