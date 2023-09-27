@@ -32,21 +32,6 @@ class Sampler:
                 stack.reverse()
                 print(stack)  # Esta linea imprime el stack despues de invertirlo la pueden comentar o descomentar si quieren
                 
-                # desactivar antes de pasar nuevos nodos
-                # contador_pos_stack = 0
-                # contador_pos_tree = 0
-                # for item in self.final_tree:
-                #     if contador_pos_stack == len(stack):
-                #         break
-                #     if item[2] and item[0] == stack[contador_pos_stack]:
-                #         contador_pos_stack += 1
-                #     elif item[2] and item[0] != stack[contador_pos_stack]:
-                #         break
-                #     contador_pos_tree += 1
-
-                # for item_num in range(contador_pos_tree, len(self.final_tree)):
-                #     self.final_tree[item_num][2] = False
-
                 # agregar los nuevos nodos
                 for pos in range(len(stack)):
                     self.usado = False
