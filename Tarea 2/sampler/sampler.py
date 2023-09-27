@@ -30,7 +30,7 @@ class Sampler:
                     code = frame.f_code.co_name
                     stack.append(code)
                 stack.reverse()
-                print(stack)  # Esta linea imprime el stack despues de invertirlo la pueden comentar o descomentar si quieren
+                #print(stack)  # Esta linea imprime el stack despues de invertirlo la pueden comentar o descomentar si quieren
                 
                 # agregar los nuevos nodos
                 for pos in range(len(stack)):
@@ -52,5 +52,6 @@ class Sampler:
             sleep(1)
 
     def printReport(self):
+        print(f"total ({self.final_tree[0][1]} seconds)")
         for i in self.final_tree:
-            print(i)
+            print("  "*i[2], i[0], f"({i[1]} seconds)")
